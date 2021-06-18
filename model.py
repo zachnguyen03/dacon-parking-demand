@@ -71,3 +71,6 @@ score = rmse_cv(avg_models, 5, X_train, y_train)
 
 avg_models.fit(X_train, y_train)
 pred_stacking = avg_models.predict(X_test)
+
+def rmsle(y, y_pred):
+    return np.sqrt(mean_squared_error(y, y_pred))
