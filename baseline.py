@@ -13,6 +13,7 @@ submission = pd.read_csv('./dataset/sample_submission.csv')
 cols = ['Just Code', 'Total number of households', 'Rental building classification', 'Area', 'Supply type', 'Dedicated Area', 'Num household by exclusive area',
         'Free singer', 'Identity', 'Rent deposit', 'Rent', 'Subway stations within 10-min walk', 'Bus stops within 10-min walk','Parking spaces within complex', 'Registered vehicles']
 train_df.columns = cols
+test_df.columns = cols[:-1]
 print(train_df.head())
 
 #Some EDA
@@ -26,12 +27,30 @@ test_df.drop_duplicates(inplace=True)
 
 categorical_cols = ['Just Code', 'Rental building classification', 'Area', 'Supply type', 'Identity', 'Rent deposit', 'Rent']
 
+#String cleaning and numeric conversion
+train_df = train_df.replace('-', np.nan)
+train_df[['Rent', 'Rent deposit']]=train_df[['Rent', 'Rent deposit']].apply(pd.to_numeric)
+test_df = test_df.replace('-', np.nan)
+test_df[['Rent', 'Rent deposit']]=test_df[['Rent', 'Rent deposit']].apply(pd.to_numeric)
+
+
 #Check missing values
 train_df.isna().sum()
 test_df.isna().sum()
 
 train_df['Dedicated Area'] = train_df['Dedicated Area'] //5 *5
 test_df['Dedicated Area'] = train_df['Dedicated Area'] //5 *5
+
+#Limit dedicated area to 15-100
+idx = train_df[train_df['Dedicated Area']>100].index
+train_df.loc[idx, 'Dedicated Area'] = 100
+idx = test_df[test_df['Dedicated Area']>100].index
+test_df.loc[idx, 'Dedicated Area'] = 100
+
+idx = train_df[train_df['Dedicated Area']<15].index
+train_df.loc[idx, 'Dedicated Area'] = 15
+idx = test_df[test_df['Dedicated Area']<15].index
+test_df.loc[idx, 'Dedicated Area'] = 15
 
 #Group each just code together
 columns = ['Just Code', 'Total number of households', 'Free singer', 'Area', 'Parking spaces within complex', 'Subway stations within 10-min walk', 'Bus stops within 10-min walk']
@@ -75,6 +94,9 @@ X_train = new_train.iloc[:,1:-1]
 y_train = new_train.iloc[:,-1]
 X_test = new_test.iloc[:,1:]
 
+X_train = X_train.fillna(-1)
+X_test = X_test.fillna(-1)
+
 X_train = X_train.drop('Area', axis=1)
 X_test = X_test.drop('Area', axis=1)
 
@@ -88,9 +110,10 @@ X_train = X_train.drop('Rental building classification', axis=1)
 X_train = X_train.join(building_class_dummies)
 
 building_class_dummies_test = pd.get_dummies(test_df['Rental building classification'])
+building_class_dummies_test.columns = ['Apartment', 'Storage']
 X_test = X_test.drop('Rental building classification', axis=1)
 X_test = X_test.join(building_class_dummies_test)
 
-pred = model.predict(X_test)
-submission['num'] = pred
-submission.to_csv('baseline.csv', index=False)
+pred_rental_classification = model.predict(X_test)
+submission['num'] = pred_rental_classification
+submission.to_csv('full_baseline_rental.csv', index=False)

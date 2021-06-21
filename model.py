@@ -5,7 +5,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import RobustScaler
 from sklearn.base import BaseEstimator, TransformerMixin, RegressorMixin, clone
 from sklearn.model_selection import KFold, cross_val_score, train_test_split
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, mean_absolute_error
 import lightgbm as lgb
 import xgboost as xgb
 
@@ -15,7 +15,7 @@ import numpy as np
 n_folds = 5
 def rmse_cv(model, n_folds, X_train, y_train):
     kf = KFold(n_folds, shuffle=True, random_state=42).get_n_splits(X_train)
-    rmse = np.sqrt(-cross_val_score(model, X_train, y_train, scoring='neg_mean_squared_error', cv=kf))
+    rmse = np.sqrt(-cross_val_score(model, X_train, y_train, scoring='neg_mean_absolute_error', cv=kf))
 
     return (rmse)
 
@@ -40,7 +40,7 @@ lgb_model = lgb.LGBMRegressor(objective='regression',num_leaves=5,
                               feature_fraction_seed=9, bagging_seed=9,
                               min_data_in_leaf =6, min_sum_hessian_in_leaf = 11)
 # KFold test
-score = rmse_cv(GBoost,5, X_train, y_train)
+score = rmse_cv(model,5, X_train_scaled, Y)
 print(" Averaged base models score: {:.4f} ({:.4f})\n".format(score.mean(), score.std()))
 
 
@@ -67,9 +67,9 @@ class AveragingModels(BaseEstimator, RegressorMixin, TransformerMixin):
         return np.mean(predictions, axis=1)
 
 avg_models = AveragingModels(models=(xgb_model, lgb_model, model, GBoost))
-score = rmse_cv(avg_models, 5, X_train, y_train)
+score = rmse_cv(avg_models, 5, X_train_scaled, Y)
 
-avg_models.fit(X_train, y_train)
+avg_models.fit(X_train_scaled, y_train)
 pred_stacking = avg_models.predict(X_test)
 
 def rmsle(y, y_pred):
